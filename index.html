@@ -36,6 +36,11 @@
             <p class="subtitle">Discrete Mathematics Calculator</p>
             
             <div class="num-sets-section">
+                <label>Universal Set (U):</label>
+                <input type="text" id="universalSet" placeholder="e.g., 1,2,3,4,5,6,7,8,9,10" style="flex:1;min-width:150px;" oninput="calculateResult()">
+            </div>
+            
+            <div class="num-sets-section">
                 <label>Number of Sets:</label>
                 <input type="number" id="numSets" value="2" min="2" max="6">
                 <span class="hint-text">(2-6 sets)</span>
@@ -155,8 +160,14 @@
         function intersection(setA, setB) { const r = new Set(); setA.forEach(e => { if (setB.has(e)) r.add(e); }); return r; }
         function union(setA, setB) { const r = new Set(setA); setB.forEach(e => r.add(e)); return r; }
         function complement(set) {
+            const universalInput = document.getElementById('universalSet');
             const all = new Set();
-            for (let i = 0; i < numSets; i++) getSetValue(setLetters[i]).forEach(e => all.add(e));
+            if (universalInput && universalInput.value.trim()) {
+                const cleaned = universalInput.value.replace(/[\s,]+/g, ',').replace(/^,|,$/g, '');
+                cleaned.split(',').forEach(e => { if (e !== '') all.add(e); });
+            } else {
+                for (let i = 0; i < numSets; i++) getSetValue(setLetters[i]).forEach(e => all.add(e));
+            }
             const r = new Set();
             all.forEach(e => { if (!set.has(e)) r.add(e); });
             return r;
