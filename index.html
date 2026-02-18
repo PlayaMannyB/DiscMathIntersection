@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Set Operations Calculator - Discrete Math</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .particles { position: fixed; inset: 0; overflow: hidden; z-index: 0; pointer-events: none; }
+        .particle { position: absolute; border-radius: 50%; background: radial-gradient(circle, hsl(180,100%,80%) 0%, hsl(180,100%,80%) 10%, hsla(180,100%,80%,0) 70%); mix-blend-mode: screen; animation: float 15s infinite linear; }
+        @keyframes float { from { transform: translateY(110vh) scale(0.4); opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } to { transform: translateY(-20vh) scale(2.2); opacity: 0; } }
+    </style>
+</head>
+<body>
+    <div class="particles">
+        <div class="particle" style="left:5%;width:8px;height:8px;animation-delay:0s;animation-duration:12s;"></div>
+        <div class="particle" style="left:15%;width:4px;height:4px;animation-delay:2s;animation-duration:14s;"></div>
+        <div class="particle" style="left:25%;width:6px;height:6px;animation-delay:4s;animation-duration:11s;"></div>
+        <div class="particle" style="left:35%;width:3px;height:3px;animation-delay:1s;animation-duration:15s;"></div>
+        <div class="particle" style="left:45%;width:7px;height:7px;animation-delay:3s;animation-duration:13s;"></div>
+        <div class="particle" style="left:55%;width:5px;height:5px;animation-delay:5s;animation-duration:10s;"></div>
+        <div class="particle" style="left:65%;width:4px;height:4px;animation-delay:2.5s;animation-duration:16s;"></div>
+        <div class="particle" style="left:75%;width:6px;height:6px;animation-delay:4.5s;animation-duration:12s;"></div>
+        <div class="particle" style="left:85%;width:3px;height:3px;animation-delay:1.5s;animation-duration:14s;"></div>
+        <div class="particle" style="left:95%;width:5px;height:5px;animation-delay:3.5s;animation-duration:11s;"></div>
+        <div class="particle" style="left:10%;width:4px;height:4px;animation-delay:6s;animation-duration:13s;"></div>
+        <div class="particle" style="left:30%;width:6px;height:6px;animation-delay:7s;animation-duration:15s;"></div>
+        <div class="particle" style="left:50%;width:3px;height:3px;animation-delay:8s;animation-duration:12s;"></div>
+        <div class="particle" style="left:70%;width:5px;height:5px;animation-delay:9s;animation-duration:14s;"></div>
+        <div class="particle" style="left:90%;width:4px;height:4px;animation-delay:10s;animation-duration:11s;"></div>
+    </div>
+
+    <div class="container" style="position:relative;z-index:1;">
+        <div class="card">
+            <h1>Set <span class="math-symbol">Operations</span></h1>
+            <p class="subtitle">Discrete Mathematics Calculator</p>
+            
+            <div class="num-sets-section">
+                <label>Number of Sets:</label>
+                <input type="number" id="numSets" value="2" min="2" max="6">
+                <span class="hint-text">(2-6 sets)</span>
+            </div>
+            
+            <div class="sets-container" id="setsContainer"></div>
+            
+            <div class="expression-builder">
+                <h3>Build Expression</h3>
+                <div class="expression-row" id="expressionRow"></div>
+                <div class="quick-ops" id="quickOps">
+                    <button class="quick-op-btn" onclick="addQuickOp('A∩B')">A ∩ B</button>
+                    <button class="quick-op-btn" onclick="addQuickOp('A∪B')">A ∪ B</button>
+                    <button class="quick-op-btn" onclick="addQuickOp('A∩B∩C')">A ∩ B ∩ C</button>
+                    <button class="quick-op-btn" onclick="addQuickOp('A∪B∪C')">A ∪ B ∪ C</button>
+                    <button class="quick-op-btn" onclick="addQuickOp('A_COMPL')">A'</button>
+                    <button class="clear-btn" onclick="clearExpression()">Clear</button>
+                </div>
+                <div class="expression-display" id="expressionDisplay">
+                    <span class="sets">Select sets and operations above</span>
+                </div>
+            </div>
+            
+            <div class="result-section">
+                <h3>Result</h3>
+                <div class="result-value" id="result">∅</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let numSets = 2;
+        let expression = [];
+        const setLetters = ['A', 'B', 'C', 'D', 'E', 'F'];
+
+        document.getElementById('numSets').addEventListener('change', function() {
+            numSets = Math.min(6, Math.max(2, parseInt(this.value) || 2));
+            this.value = numSets;
+            updateSetsContainer();
+            buildExpressionUI();
+            clearExpression();
+        });
+
+        function updateSetsContainer() {
+            const container = document.getElementById('setsContainer');
+            let html = '';
+            for (let i = 0; i < numSets; i++) {
+                const letter = setLetters[i];
+                html += '<div class="set-input-card"><label>Set <span>' + letter + '</span></label><input type="text" id="set' + letter + '" placeholder="e.g., 1,2,3,4,5" oninput="calculateResult()"><p class="hint">Enter elements separated by commas</p></div>';
+            }
+            container.innerHTML = html;
+        }
+
+        function getSetValue(letter) {
+            const input = document.getElementById('set' + letter);
+            if (!input || !input.value.trim()) return new Set();
+            const cleaned = input.value.replace(/[\s,]+/g, ',').replace(/^,|,$/g, '');
+            return new Set(cleaned.split(',').filter(x => x !== ''));
+        }
+
+        function setToArray(set) {
+            return Array.from(set).sort((a, b) => {
+                const numA = parseFloat(a), numB = parseFloat(b);
+                return !isNaN(numA) && !isNaN(numB) ? numA - numB : a.localeCompare(b);
+            });
+        }
+
+        function formatResult(set) {
+            if (set.size === 0) return '∅';
+            return '{ ' + setToArray(set).join(', ') + ' }';
+        }
+
+        function calculateResult() {
+            const resultEl = document.getElementById('result');
+            if (expression.length === 0) {
+                resultEl.innerHTML = '∅';
+                resultEl.className = 'result-value';
+                return;
+            }
+            try {
+                let result = evaluateExpression(expression);
+                if (result.size === 0) {
+                    resultEl.innerHTML = '∅';
+                    resultEl.className = 'result-value empty-set';
+                } else {
+                    const formatted = formatResult(result);
+                    resultEl.textContent = formatted;
+                    resultEl.className = 'result-value';
+                }
+            } catch (e) {
+                resultEl.innerHTML = '∅';
+                resultEl.className = 'result-value empty-set';
+            }
+        }
+
+        function evaluateExpression(expr) {
+            if (expr.length === 0) return new Set();
+            let result = null;
+            let pendingOp = null;
+            for (let i = 0; i < expr.length; i++) {
+                const item = expr[i];
+                if (item.type === 'set') {
+                    const set = getSetValue(item.value);
+                    if (result === null) result = set;
+                    else if (pendingOp === '∩') result = intersection(result, set);
+                    else if (pendingOp === '∪') result = union(result, set);
+                    pendingOp = null;
+                } else if (item.type === 'op' && item.value === "'") {
+                    if (result !== null) result = complement(result);
+                } else if (item.type === 'op') {
+                    pendingOp = item.value;
+                }
+            }
+            return result || new Set();
+        }
+
+        function intersection(setA, setB) { const r = new Set(); setA.forEach(e => { if (setB.has(e)) r.add(e); }); return r; }
+        function union(setA, setB) { const r = new Set(setA); setB.forEach(e => r.add(e)); return r; }
+        function complement(set) {
+            const all = new Set();
+            for (let i = 0; i < numSets; i++) getSetValue(setLetters[i]).forEach(e => all.add(e));
+            const r = new Set();
+            all.forEach(e => { if (!set.has(e)) r.add(e); });
+            return r;
+        }
+
+        function addSetToExpression(letter) {
+            const last = expression[expression.length - 1];
+            if (last && last.type === 'set') addOpToExpression('∩');
+            expression.push({ type: 'set', value: letter });
+            updateExpressionDisplay();
+            calculateResult();
+        }
+
+        function addOpToExpression(op) {
+            if (expression.length === 0) return;
+            const last = expression[expression.length - 1];
+            if (last.type === 'op' && last.value === "'" && (op === '∩' || op === '∪')) { }
+            else if (last.type === 'op' || last.type === 'openParen') return;
+            expression.push({ type: 'op', value: op });
+            updateExpressionDisplay();
+            calculateResult();
+        }
+
+        function addParenToExpression(paren) {
+            expression.push({ type: 'paren', value: paren });
+            updateExpressionDisplay();
+            calculateResult();
+        }
+
+        function updateExpressionDisplay() {
+            const display = document.getElementById('expressionDisplay');
+            if (expression.length === 0) {
+                display.innerHTML = '<span class="sets">Select sets and operations above</span>';
+                return;
+            }
+            let html = '';
+            expression.forEach(item => {
+                if (item.type === 'set') html += '<span class="sets">' + item.value + '</span> ';
+                else if (item.type === 'op') html += item.value + ' ';
+                else if (item.type === 'paren') html += item.value;
+            });
+            display.innerHTML = html;
+        }
+
+        function addQuickOp(op) {
+            clearExpression();
+            if (op === 'A_COMPL') { addSetToExpression('A'); addOpToExpression("'"); return; }
+            const sep = op.includes('∩') ? '∩' : op.includes('∪') ? '∪' : null;
+            if (!sep) return;
+            const parts = op.split(sep);
+            parts.forEach((part, idx) => {
+                if (idx > 0) addOpToExpression(sep);
+                const letter = part.trim();
+                addSetToExpression(letter);
+            });
+        }
+
+        function clearExpression() { expression = []; updateExpressionDisplay(); calculateResult(); }
+
+        function buildExpressionUI() {
+            const row = document.getElementById('expressionRow');
+            let html = '';
+            for (let i = 0; i < numSets; i++) html += '<button class="op-btn" onclick="addSetToExpression(\'' + setLetters[i] + '\')">' + setLetters[i] + '</button>';
+            html += '<button class="op-btn" onclick="addParenToExpression(\'(\')\'>(</button>';
+            html += '<button class="op-btn" onclick="addParenToExpression(\')\')\')">)</button>';
+            html += '<button class="op-btn" onclick="addOpToExpression(\'∩\')">∩</button>';
+            html += '<button class="op-btn" onclick="addOpToExpression(\'∪\')">∪</button>';
+            html += '<button class="op-btn" onclick="addOpToExpression(\'\\\'\')">' + "'" + '</button>';
+            row.innerHTML = html;
+        }
+
+        document.addEventListener('DOMContentLoaded', function() { updateSetsContainer(); buildExpressionUI(); calculateResult(); });
+    </script>
+</body>
+</html>
