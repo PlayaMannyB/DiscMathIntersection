@@ -37,7 +37,7 @@
             
             <div class="num-sets-section">
                 <label>Universal Set (U):</label>
-                <input type="text" id="universalSet" placeholder="e.g., 1,2,3,4,5,6,7,8,9,10" style="flex:1;min-width:150px;" oninput="calculateResult()">
+                <input type="text" id="universalSet" placeholder="e.g., a,b,c,d,e" style="flex:1;min-width:150px;" oninput="calculateResult()">
             </div>
             
             <div class="num-sets-section">
@@ -51,16 +51,11 @@
             <div class="expression-builder">
                 <h3>Build Expression</h3>
                 <div class="expression-row" id="expressionRow"></div>
-                <div class="quick-ops" id="quickOps">
-                    <button class="quick-op-btn" onclick="addQuickOp('A∩B')">A ∩ B</button>
-                    <button class="quick-op-btn" onclick="addQuickOp('A∪B')">A ∪ B</button>
-                    <button class="quick-op-btn" onclick="addQuickOp('A∩B∩C')">A ∩ B ∩ C</button>
-                    <button class="quick-op-btn" onclick="addQuickOp('A∪B∪C')">A ∪ B ∪ C</button>
-                    <button class="quick-op-btn" onclick="addQuickOp('A_COMPL')">A'</button>
-                    <button class="clear-btn" onclick="clearExpression()">Clear</button>
-                </div>
                 <div class="expression-display" id="expressionDisplay">
                     <span class="sets">Select sets and operations above</span>
+                </div>
+                <div style="margin-top:10px;text-align:center;">
+                    <button class="clear-btn" onclick="clearExpression()">Clear</button>
                 </div>
             </div>
             
@@ -75,36 +70,72 @@
         let numSets = 2;
         let expression = [];
         const setLetters = ['A', 'B', 'C', 'D', 'E', 'F'];
+        let parenResults = {}; // Store results from parentheses
+        let parenCounter = 0;
 
-        document.getElementById('numSets').addEventListener('change', function() {
-            numSets = Math.min(6, Math.max(2, parseInt(this.value) || 2));
-            this.value = numSets;
-            updateSetsContainer();
-            buildExpressionUI();
-            clearExpression();
-        });
+        function onNumSetsChange() {
+            const val = Math.min(6, Math.max(2, parseInt(document.getElementById('numSets').value) || 2));
+            if (val !== numSets) {
+                numSets = val;
+                document.getElementById('numSets').value = numSets;
+                updateSetsContainer();
+                buildExpressionUI();
+                clearExpression();
+            }
+        }
+        
+        document.getElementById('numSets').addEventListener('change', onNumSetsChange);
+        document.getElementById('numSets').addEventListener('input', onNumSetsChange);
 
         function updateSetsContainer() {
             const container = document.getElementById('setsContainer');
             let html = '';
             for (let i = 0; i < numSets; i++) {
                 const letter = setLetters[i];
-                html += '<div class="set-input-card"><label>Set <span>' + letter + '</span></label><input type="text" id="set' + letter + '" placeholder="e.g., 1,2,3,4,5" oninput="calculateResult()"><p class="hint">Enter elements separated by commas</p></div>';
+                html += '<div class="set-input-card"><label>Set <span>' + letter + '</span></label><input type="text" id="set' + letter + '" placeholder="e.g., a,b,c,d" oninput="calculateResult()"><p class="hint">Enter elements separated by commas</p></div>';
             }
             container.innerHTML = html;
+        }
+
+        function parseSetInput(input) {
+            if (!input || !input.trim()) return [];
+            // Split by comma and trim whitespace from each element
+            return input.split(',').map(x => x.trim()).filter(x => x !== '');
+        }
+
+        function getUniversalSet() {
+            const input = document.getElementById('universalSet');
+            return new Set(parseSetInput(input.value));
         }
 
         function getSetValue(letter) {
             const input = document.getElementById('set' + letter);
             if (!input || !input.value.trim()) return new Set();
-            const cleaned = input.value.replace(/[\s,]+/g, ',').replace(/^,|,$/g, '');
-            return new Set(cleaned.split(',').filter(x => x !== ''));
+            const universalSet = getUniversalSet();
+            const elements = parseSetInput(input.value);
+            
+            // If U is defined, only keep elements that are in U
+            if (universalSet.size > 0) {
+                return new Set(elements.filter(e => universalSet.has(e)));
+            }
+            // If U is not defined, keep all entered elements
+            return new Set(elements);
         }
 
         function setToArray(set) {
             return Array.from(set).sort((a, b) => {
-                const numA = parseFloat(a), numB = parseFloat(b);
-                return !isNaN(numA) && !isNaN(numB) ? numA - numB : a.localeCompare(b);
+                // Parse as numbers for initial comparison
+                const numA = parseFloat(a);
+                const numB = parseFloat(b);
+                const aIsNum = !isNaN(numA) && a.trim() === String(numA);
+                const bIsNum = !isNaN(numB) && b.trim() === String(numB);
+                
+                // If both are clean numbers, sort numerically
+                if (aIsNum && bIsNum) {
+                    return numA - numB;
+                }
+                // Otherwise use string comparison for consistency
+                return String(a).localeCompare(String(b));
             });
         }
 
@@ -114,20 +145,22 @@
         }
 
         function calculateResult() {
+            validateAllSets();
+            
             const resultEl = document.getElementById('result');
             if (expression.length === 0) {
                 resultEl.innerHTML = '∅';
-                resultEl.className = 'result-value';
+                resultEl.className = 'result-value empty-set';
                 return;
             }
             try {
                 let result = evaluateExpression(expression);
+                const formatted = formatResult(result);
+                resultEl.textContent = formatted;
+                
                 if (result.size === 0) {
-                    resultEl.innerHTML = '∅';
                     resultEl.className = 'result-value empty-set';
                 } else {
-                    const formatted = formatResult(result);
-                    resultEl.textContent = formatted;
                     resultEl.className = 'result-value';
                 }
             } catch (e) {
@@ -138,39 +171,190 @@
 
         function evaluateExpression(expr) {
             if (expr.length === 0) return new Set();
+            
+            // Validate parentheses matching
+            let parenDepth = 0;
+            for (let item of expr) {
+                if (item.type === 'paren' && item.value === '(') parenDepth++;
+                else if (item.type === 'paren' && item.value === ')') {
+                    parenDepth--;
+                    if (parenDepth < 0) return new Set(); // Unmatched closing paren
+                }
+            }
+            if (parenDepth !== 0) return new Set(); // Unmatched opening paren
+            
+            // First pass: handle parentheses (innermost first)
+            let processed = processParentheses(expr);
+            
+            // Second pass: handle complement operators (highest precedence)
+            processed = processComplements(processed);
+            
+            // Third pass: evaluate the main expression (∩ and ∪ left-to-right)
             let result = null;
             let pendingOp = null;
-            for (let i = 0; i < expr.length; i++) {
-                const item = expr[i];
+            
+            for (let i = 0; i < processed.length; i++) {
+                const item = processed[i];
+                
                 if (item.type === 'set') {
-                    const set = getSetValue(item.value);
-                    if (result === null) result = set;
-                    else if (pendingOp === '∩') result = intersection(result, set);
-                    else if (pendingOp === '∪') result = union(result, set);
+                    let set;
+                    // Check if this is a parenthesis result or complement result
+                    if (item.value.startsWith('__paren_') || item.value.startsWith('__comp_')) {
+                        set = parenResults[item.value] || new Set();
+                    } else {
+                        set = getSetValue(item.value);
+                    }
+                    
+                    if (result === null) {
+                        result = set;
+                    } else if (pendingOp === '∩') {
+                        result = intersection(result, set);
+                    } else if (pendingOp === '∪') {
+                        result = union(result, set);
+                    }
                     pendingOp = null;
-                } else if (item.type === 'op' && item.value === "'") {
-                    if (result !== null) result = complement(result);
                 } else if (item.type === 'op') {
                     pendingOp = item.value;
                 }
             }
+            
             return result || new Set();
         }
+        
+        function processComplements(expr) {
+            let result = [];
+            let i = 0;
+            
+            while (i < expr.length) {
+                const item = expr[i];
+                
+                // If we find a complement operator, apply it to the preceding set
+                if (item.type === 'op' && item.value === "'") {
+                    if (result.length > 0) {
+                        const lastItem = result.pop();
+                        
+                        // Get the set to complement (already computed or stored)
+                        let setToComplement;
+                        if (lastItem.value.startsWith('__paren_') || lastItem.value.startsWith('__comp_')) {
+                            setToComplement = parenResults[lastItem.value] || new Set();
+                        } else {
+                            // Get and apply U filtering here
+                            setToComplement = getSetValue(lastItem.value);
+                        }
+                        
+                        // Apply complement
+                        const complemented = complement(setToComplement);
+                        const resultKey = '__comp_' + (parenCounter++);
+                        parenResults[resultKey] = complemented;
+                        
+                        result.push({ type: 'set', value: resultKey });
+                    }
+                } else {
+                    result.push(item);
+                }
+                i++;
+            }
+            
+            return result;
+        }
+        
+        function processParentheses(expr) {
+            let depth = 0;
+            let openAt = -1;
+            
+            // Find innermost parentheses and evaluate them
+            for (let i = 0; i < expr.length; i++) {
+                const item = expr[i];
+                
+                if (item.type === 'paren' && item.value === '(') {
+                    if (depth === 0) openAt = i;
+                    depth++;
+                } else if (item.type === 'paren' && item.value === ')') {
+                    depth--;
+                    if (depth === 0 && openAt !== -1) {
+                        // Found complete parentheses group
+                        const innerExpr = expr.slice(openAt + 1, i);
+                        const groupResult = evaluateExpression(innerExpr);
+                        
+                        // Store result with unique key
+                        const resultKey = '__paren_' + (parenCounter++);
+                        parenResults[resultKey] = groupResult;
+                        
+                        // Replace parentheses and contents with single set item
+                        expr = expr.slice(0, openAt).concat(
+                            [{ type: 'set', value: resultKey }],
+                            expr.slice(i + 1)
+                        );
+                        
+                        // Recursively process remaining parentheses
+                        return processParentheses(expr);
+                    }
+                }
+            }
+            
+            return expr;
+        }
 
-        function intersection(setA, setB) { const r = new Set(); setA.forEach(e => { if (setB.has(e)) r.add(e); }); return r; }
-        function union(setA, setB) { const r = new Set(setA); setB.forEach(e => r.add(e)); return r; }
+        function intersection(setA, setB) {
+            const r = new Set();
+            setA.forEach(e => {
+                if (setB.has(e)) r.add(e);
+            });
+            return r;
+        }
+
+        function union(setA, setB) {
+            const r = new Set(setA);
+            setB.forEach(e => r.add(e));
+            return r;
+        }
+
         function complement(set) {
             const universalInput = document.getElementById('universalSet');
             const all = new Set();
             if (universalInput && universalInput.value.trim()) {
-                const cleaned = universalInput.value.replace(/[\s,]+/g, ',').replace(/^,|,$/g, '');
-                cleaned.split(',').forEach(e => { if (e !== '') all.add(e); });
+                const elements = parseSetInput(universalInput.value);
+                elements.forEach(e => all.add(e));
             } else {
-                for (let i = 0; i < numSets; i++) getSetValue(setLetters[i]).forEach(e => all.add(e));
+                // If U not defined, use unfiltered elements from all sets
+                for (let i = 0; i < numSets; i++) {
+                    const input = document.getElementById('set' + setLetters[i]);
+                    if (input && input.value.trim()) {
+                        parseSetInput(input.value).forEach(e => all.add(e));
+                    }
+                }
             }
             const r = new Set();
-            all.forEach(e => { if (!set.has(e)) r.add(e); });
+            all.forEach(e => {
+                if (!set.has(e)) r.add(e);
+            });
             return r;
+        }
+
+        function validateSetInput(letter) {
+            const input = document.getElementById('set' + letter);
+            if (!input) return;
+            
+            const universalSet = getUniversalSet();
+            if (universalSet.size === 0) {
+                input.classList.remove('invalid');
+                return;
+            }
+            
+            const elements = parseSetInput(input.value);
+            const hasInvalidElement = elements.some(e => !universalSet.has(e));
+            
+            if (hasInvalidElement) {
+                input.classList.add('invalid');
+            } else {
+                input.classList.remove('invalid');
+            }
+        }
+
+        function validateAllSets() {
+            for (let i = 0; i < numSets; i++) {
+                validateSetInput(setLetters[i]);
+            }
         }
 
         function addSetToExpression(letter) {
@@ -184,8 +368,8 @@
         function addOpToExpression(op) {
             if (expression.length === 0) return;
             const last = expression[expression.length - 1];
-            if (last.type === 'op' && last.value === "'" && (op === '∩' || op === '∪')) { }
-            else if (last.type === 'op' || last.type === 'openParen') return;
+            // Allow ∩/∪ after complement ('), prevent other ops after ops/open paren
+            if ((last.type === 'op' && last.value !== "'") || last.type === 'openParen') return;
             expression.push({ type: 'op', value: op });
             updateExpressionDisplay();
             calculateResult();
@@ -207,40 +391,36 @@
             expression.forEach(item => {
                 if (item.type === 'set') html += '<span class="sets">' + item.value + '</span> ';
                 else if (item.type === 'op') html += item.value + ' ';
-                else if (item.type === 'paren') html += item.value;
+                else if (item.type === 'paren') html += item.value + ' ';
             });
             display.innerHTML = html;
         }
 
-        function addQuickOp(op) {
-            clearExpression();
-            if (op === 'A_COMPL') { addSetToExpression('A'); addOpToExpression("'"); return; }
-            const sep = op.includes('∩') ? '∩' : op.includes('∪') ? '∪' : null;
-            if (!sep) return;
-            const parts = op.split(sep);
-            parts.forEach((part, idx) => {
-                if (idx > 0) addOpToExpression(sep);
-                const letter = part.trim();
-                addSetToExpression(letter);
-            });
+        function clearExpression() { 
+            expression = []; 
+            parenResults = {};
+            parenCounter = 0;
+            updateExpressionDisplay(); 
+            calculateResult();
         }
-
-        function clearExpression() { expression = []; updateExpressionDisplay(); calculateResult(); }
 
         function buildExpressionUI() {
             const row = document.getElementById('expressionRow');
             let html = '';
             for (let i = 0; i < numSets; i++) html += '<button class="op-btn" onclick="addSetToExpression(\'' + setLetters[i] + '\')">' + setLetters[i] + '</button>';
             html += '<button class="op-btn" onclick="addParenToExpression(\'(\')">(' + '</button>';
-            html += '<button class="op-btn" onclick="addParenToExpression(\')\')\')">)</button>';
+            html += '<button class="op-btn" onclick="addParenToExpression(\')\')">)</button>';
             html += '<button class="op-btn" onclick="addOpToExpression(\'∩\')">∩</button>';
             html += '<button class="op-btn" onclick="addOpToExpression(\'∪\')">∪</button>';
             html += '<button class="op-btn" onclick="addOpToExpression(\'\\\'\')">' + "'" + '</button>';
             row.innerHTML = html;
         }
 
-        document.addEventListener('DOMContentLoaded', function() { updateSetsContainer(); buildExpressionUI(); calculateResult(); });
+        document.addEventListener('DOMContentLoaded', function() { 
+            updateSetsContainer(); 
+            buildExpressionUI();
+            calculateResult(); 
+        });
     </script>
 </body>
 </html>
-
