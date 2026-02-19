@@ -231,7 +231,7 @@
             const row = document.getElementById('expressionRow');
             let html = '';
             for (let i = 0; i < numSets; i++) html += '<button class="op-btn" onclick="addSetToExpression(\'' + setLetters[i] + '\')">' + setLetters[i] + '</button>';
-            html += '<button class="op-btn" onclick="addParenToExpression(\'(\')\'>(</button>';
+            html += '<button class="op-btn" onclick="addParenToExpression(\'(\')">(' + '</button>';
             html += '<button class="op-btn" onclick="addParenToExpression(\')\')\')">)</button>';
             html += '<button class="op-btn" onclick="addOpToExpression(\'∩\')">∩</button>';
             html += '<button class="op-btn" onclick="addOpToExpression(\'∪\')">∪</button>';
@@ -243,3 +243,4 @@
     </script>
 </body>
 </html>
+
