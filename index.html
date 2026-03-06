@@ -102,7 +102,7 @@
             let html = '';
             for (let i = 0; i < numSets; i++) {
                 const letter = setLetters[i];
-                html += '<div class="set-input-card"><label>Set <span>' + letter + '</span></label><input type="text" id="set' + letter + '" placeholder="e.g., a,b,c,d" oninput="calculateResult()"><p class="hint">Comma (,) lang sapat na.</p></div>';
+                html += '<div class="set-input-card"><label>Set <span>' + letter + '</span></label><input type="text" id="set' + letter + '" placeholder="e.g., a,b,c,d" oninput="calculateResult()"><p class="hint">Add Comma(,) in betwwen elements</p></div>';
             }
             container.innerHTML = html;
         }
@@ -417,5 +417,6 @@
     </script>
 </body>
 </html>
+
 
 
