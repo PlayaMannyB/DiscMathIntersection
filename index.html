@@ -67,86 +67,96 @@
     </div>
 
     <script>
-        //JAVASCRIPTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
+        // --- GLOBAL VARIABLES (WAG GAGALAWIN PLEASE) ---
+        // Ilang sets ba? Default sa 2. Pag ginawa mong 100 to, bahala ka na sa buhay mo.
         let numSets = 2;
+        // Dito nakatabi yung mga pinindot mo. Parang listahan ng mga maling desisyon sa buhay.
         let expression = [];
+        // Labels ng sets. A to F lang kasi nakakatamad magdagdag ng letters.
         const setLetters = ['A', 'B', 'C', 'D', 'E', 'F'];
-        let parenResults = {}; // Store results from parentheses
+        // Storage ng intermediate results. Parang brain cells ko, paisa-isa lang.
+        let parenResults = {}; 
         let parenCounter = 0;
 
+        // Kapag binago yung bilang ng sets. (Sana 'di na lang dagdagan para 'di mahirap)
         function onNumSetsChange() {
+            // Safe range: 2 to 6. Bawal sakim sa sets, baka ma-lag tayo.
             const val = Math.min(6, Math.max(2, parseInt(document.getElementById('numSets').value) || 2));
             if (val !== numSets) {
                 numSets = val;
                 document.getElementById('numSets').value = numSets;
+                // Re-render lahat. Nakakapagod pero kailangan.
                 updateSetsContainer();
                 buildExpressionUI();
-                clearExpression();
+                clearExpression(); // Reset lahat. Fresh start, parang bagong taon.
             }
         }
         
+        // Listeners para sa input. Busy 'to, wag storbohin.
         document.getElementById('numSets').addEventListener('change', onNumSetsChange);
         document.getElementById('numSets').addEventListener('input', onNumSetsChange);
 
+        // Ito yung naglalagay ng mga input boxes sa screen. HTML generator 3000.
         function updateSetsContainer() {
             const container = document.getElementById('setsContainer');
             let html = '';
             for (let i = 0; i < numSets; i++) {
                 const letter = setLetters[i];
-                html += '<div class="set-input-card"><label>Set <span>' + letter + '</span></label><input type="text" id="set' + letter + '" placeholder="e.g., a,b,c,d" oninput="calculateResult()"><p class="hint">Enter elements separated by commas</p></div>';
+                html += '<div class="set-input-card"><label>Set <span>' + letter + '</span></label><input type="text" id="set' + letter + '" placeholder="e.g., a,b,c,d" oninput="calculateResult()"><p class="hint">Comma (,) lang sapat na.</p></div>';
             }
             container.innerHTML = html;
         }
 
+        // Taga-convert ng string to Array. Linis-linis din pag may time.
         function parseSetInput(input) {
             if (!input || !input.trim()) return [];
-            // Split by comma and trim whitespace from each element
+            // Split, trim, tapos filter out yung mga empty. Effort, 'di ba?
             return input.split(',').map(x => x.trim()).filter(x => x !== '');
         }
 
+        // Kinukuha yung laman ng Universal Set. Ang pinakamakapangyarihang set sa lahat.
         function getUniversalSet() {
             const input = document.getElementById('universalSet');
             return new Set(parseSetInput(input.value));
         }
 
+        // Kinukuha yung laman ng set (A, B, etc.) pero chine-check kung belong ba talaga sila sa U.
         function getSetValue(letter) {
             const input = document.getElementById('set' + letter);
             if (!input || !input.value.trim()) return new Set();
+            
             const universalSet = getUniversalSet();
             const elements = parseSetInput(input.value);
             
-            // If U is defined, only keep elements that are in U
+            // MATH LAW: Pag wala ka sa Universal Set, bawal ka dito. Alis!
             if (universalSet.size > 0) {
                 return new Set(elements.filter(e => universalSet.has(e)));
             }
-            // If U is not defined, keep all entered elements
             return new Set(elements);
         }
 
+        // Sorting logic. Para hindi sabog-sabog yung output. 1, 2, 3 bago A, B, C.
         function setToArray(set) {
             return Array.from(set).sort((a, b) => {
-                // Parse as numbers for initial comparison
                 const numA = parseFloat(a);
                 const numB = parseFloat(b);
                 const aIsNum = !isNaN(numA) && a.trim() === String(numA);
                 const bIsNum = !isNaN(numB) && b.trim() === String(numB);
                 
-                // If both are clean numbers, sort numerically
-                if (aIsNum && bIsNum) {
-                    return numA - numB;
-                }
-                // Otherwise use string comparison for consistency
+                if (aIsNum && bIsNum) return numA - numB;
                 return String(a).localeCompare(String(b));
             });
         }
 
+        // Gagawing string yung result para mabasa ng normal na tao.
         function formatResult(set) {
-            if (set.size === 0) return '∅';
+            if (set.size === 0) return '∅'; // HAHAHA SAD WALANG LAMAN.
             return '{ ' + setToArray(set).join(', ') + ' }';
         }
 
+        // ANG UTAL-UTAL NA CALCULATOR ENGINE. 
         function calculateResult() {
-            validateAllSets();
+            validateAllSets(); // Check errors bago mag-assume.
             
             const resultEl = document.getElementById('result');
             if (expression.length === 0) {
@@ -155,42 +165,42 @@
                 return;
             }
             try {
+                // Dito na yung totoong bakbakan. Evaluate na!
                 let result = evaluateExpression(expression);
                 const formatted = formatResult(result);
                 resultEl.textContent = formatted;
                 
-                if (result.size === 0) {
-                    resultEl.className = 'result-value empty-set';
-                } else {
-                    resultEl.className = 'result-value';
-                }
+                // Style switch. Pag empty, gawing "sad" yung style.
+                resultEl.className = (result.size === 0) ? 'result-value empty-set' : 'result-value';
             } catch (e) {
+                // Pag may error, kunyari empty set na lang. HAHAHA WAG MAINGAY.
                 resultEl.innerHTML = '∅';
                 resultEl.className = 'result-value empty-set';
             }
         }
 
+        // Logic handler. Sinusunod nito yung rules ng Discrete Math  sa book na sinend ni sir(Sana).
         function evaluateExpression(expr) {
             if (expr.length === 0) return new Set();
             
-            // Validate parentheses matching
+            // 1. Parenthesis check. Bawal ang single, dapat may partner lagi awts AHAHAHHAHAHAHHAHAHAH
             let parenDepth = 0;
             for (let item of expr) {
                 if (item.type === 'paren' && item.value === '(') parenDepth++;
                 else if (item.type === 'paren' && item.value === ')') {
                     parenDepth--;
-                    if (parenDepth < 0) return new Set(); // Unmatched closing paren
+                    if (parenDepth < 0) return new Set(); 
                 }
             }
-            if (parenDepth !== 0) return new Set(); // Unmatched opening paren
+            if (parenDepth !== 0) return new Set(); // Error to, pero 'di ko na sasabihin.
             
-            // First pass: handle parentheses (innermost first)
+            // 2. Unahin muna yung bracket results.
             let processed = processParentheses(expr);
             
-            // Second pass: handle complement operators (highest precedence)
+            // 3. Complement next. Yung mga mapait na 'di kasali.
             processed = processComplements(processed);
             
-            // Third pass: evaluate the main expression (∩ and ∪ left-to-right)
+            // 4. Final step: Union at Intersection. Left to right lang
             let result = null;
             let pendingOp = null;
             
@@ -199,7 +209,7 @@
                 
                 if (item.type === 'set') {
                     let set;
-                    // Check if this is a parenthesis result or complement result
+                    // Check kung galing ba 'to sa saved results
                     if (item.value.startsWith('__paren_') || item.value.startsWith('__comp_')) {
                         set = parenResults[item.value] || new Set();
                     } else {
@@ -222,32 +232,25 @@
             return result || new Set();
         }
         
+        // COMPLEMENT: Yung mga "everything but you." HAHAHAHAH GAGI
         function processComplements(expr) {
             let result = [];
             let i = 0;
-            
             while (i < expr.length) {
                 const item = expr[i];
-                
-                // If we find a complement operator, apply it to the preceding set
                 if (item.type === 'op' && item.value === "'") {
                     if (result.length > 0) {
                         const lastItem = result.pop();
-                        
-                        // Get the set to complement (already computed or stored)
                         let setToComplement;
                         if (lastItem.value.startsWith('__paren_') || lastItem.value.startsWith('__comp_')) {
                             setToComplement = parenResults[lastItem.value] || new Set();
                         } else {
-                            // Get and apply U filtering here
                             setToComplement = getSetValue(lastItem.value);
                         }
                         
-                        // Apply complement
                         const complemented = complement(setToComplement);
                         const resultKey = '__comp_' + (parenCounter++);
                         parenResults[resultKey] = complemented;
-                        
                         result.push({ type: 'set', value: resultKey });
                     }
                 } else {
@@ -255,69 +258,61 @@
                 }
                 i++;
             }
-            
             return result;
         }
         
+        // PARENTHESES: Humahanap ng ( ) tapos iso-solve yung loob.
         function processParentheses(expr) {
             let depth = 0;
             let openAt = -1;
-            
-            // Find innermost parentheses and evaluate them
             for (let i = 0; i < expr.length; i++) {
                 const item = expr[i];
-                
                 if (item.type === 'paren' && item.value === '(') {
                     if (depth === 0) openAt = i;
                     depth++;
                 } else if (item.type === 'paren' && item.value === ')') {
                     depth--;
                     if (depth === 0 && openAt !== -1) {
-                        // Found complete parentheses group
                         const innerExpr = expr.slice(openAt + 1, i);
                         const groupResult = evaluateExpression(innerExpr);
-                        
-                        // Store result with unique key
                         const resultKey = '__paren_' + (parenCounter++);
                         parenResults[resultKey] = groupResult;
                         
-                        // Replace parentheses and contents with single set item
+                        // Replace yung group ng isang key. 
                         expr = expr.slice(0, openAt).concat(
                             [{ type: 'set', value: resultKey }],
                             expr.slice(i + 1)
                         );
-                        
-                        // Recursively process remaining parentheses
+                        // Tawagin ulit, baka may extra pang parenthesis eh.
                         return processParentheses(expr);
                     }
                 }
             }
-            
             return expr;
         }
 
+        // INTERSECTION: basta yung nasa lesson Kung meron ka, dapat meron din siya.
         function intersection(setA, setB) {
             const r = new Set();
-            setA.forEach(e => {
-                if (setB.has(e)) r.add(e);
-            });
+            setA.forEach(e => { if (setB.has(e)) r.add(e); });
             return r;
         }
 
+        // UNION: Pagsamahin lahat. No duplicates please, breh
         function union(setA, setB) {
             const r = new Set(setA);
             setB.forEach(e => r.add(e));
             return r;
         }
 
+        // COMPLEMENT LOGIC: Kinukuha lahat sa U na wala sa Set mo.
         function complement(set) {
             const universalInput = document.getElementById('universalSet');
             const all = new Set();
             if (universalInput && universalInput.value.trim()) {
-                const elements = parseSetInput(universalInput.value);
-                elements.forEach(e => all.add(e));
+                parseSetInput(universalInput.value).forEach(e => all.add(e));
             } else {
-                // If U not defined, use unfiltered elements from all sets
+                // Pag walang U, Lahat ng input, gawing U.
                 for (let i = 0; i < numSets; i++) {
                     const input = document.getElementById('set' + setLetters[i]);
                     if (input && input.value.trim()) {
@@ -326,40 +321,34 @@
                 }
             }
             const r = new Set();
-            all.forEach(e => {
-                if (!set.has(e)) r.add(e);
-            });
+            all.forEach(e => { if (!set.has(e)) r.add(e); });
             return r;
         }
 
+        // Validator: Mag-re-red yung box pag pasaway yung user (wala sa U).
         function validateSetInput(letter) {
             const input = document.getElementById('set' + letter);
             if (!input) return;
-            
             const universalSet = getUniversalSet();
             if (universalSet.size === 0) {
                 input.classList.remove('invalid');
                 return;
             }
-            
             const elements = parseSetInput(input.value);
             const hasInvalidElement = elements.some(e => !universalSet.has(e));
-            
-            if (hasInvalidElement) {
-                input.classList.add('invalid');
-            } else {
-                input.classList.remove('invalid');
-            }
+            if (hasInvalidElement) input.classList.add('invalid');
+            else input.classList.remove('invalid');
         }
 
         function validateAllSets() {
-            for (let i = 0; i < numSets; i++) {
-                validateSetInput(setLetters[i]);
-            }
+            for (let i = 0; i < numSets; i++) validateSetInput(setLetters[i]);
         }
+
+        // --- BUTTON HANDLERS (Yung mga pinipindot ng user) ---
 
         function addSetToExpression(letter) {
             const last = expression[expression.length - 1];
+            // Pag pinagsunod yung sets (e.g. AB), lagyan ng auto-∩. 
             if (last && last.type === 'set') addOpToExpression('∩');
             expression.push({ type: 'set', value: letter });
             updateExpressionDisplay();
@@ -369,7 +358,7 @@
         function addOpToExpression(op) {
             if (expression.length === 0) return;
             const last = expression[expression.length - 1];
-            // Allow ∩/∪ after complement ('), prevent other ops after ops/open paren
+            // Bawal double operator. .
             if ((last.type === 'op' && last.value !== "'") || last.type === 'openParen') return;
             expression.push({ type: 'op', value: op });
             updateExpressionDisplay();
@@ -382,21 +371,22 @@
             calculateResult();
         }
 
+        // Draws the formula sa UI. Para mukhang professional
         function updateExpressionDisplay() {
             const display = document.getElementById('expressionDisplay');
             if (expression.length === 0) {
-                display.innerHTML = '<span class="sets">Select sets and operations above</span>';
+                display.innerHTML = '<span class="sets">Pindot muna dyan sa taas bago ako lumabas.</span>';
                 return;
             }
             let html = '';
             expression.forEach(item => {
                 if (item.type === 'set') html += '<span class="sets">' + item.value + '</span> ';
-                else if (item.type === 'op') html += item.value + ' ';
-                else if (item.type === 'paren') html += item.value + ' ';
+                else html += item.value + ' ';
             });
             display.innerHTML = html;
         }
 
+        // BURADO LAHAT. HAHAHA
         function clearExpression() { 
             expression = []; 
             parenResults = {};
@@ -405,6 +395,7 @@
             calculateResult();
         }
 
+        // Bina-build yung row ng buttons base sa numSets.
         function buildExpressionUI() {
             const row = document.getElementById('expressionRow');
             let html = '';
@@ -417,6 +408,7 @@
             row.innerHTML = html;
         }
 
+        // running na sya
         document.addEventListener('DOMContentLoaded', function() { 
             updateSetsContainer(); 
             buildExpressionUI();
@@ -425,4 +417,5 @@
     </script>
 </body>
 </html>
+
 
